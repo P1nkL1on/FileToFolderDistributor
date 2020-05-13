@@ -4,6 +4,12 @@
 #include <QMenuBar>
 #include <QFileDialog>
 #include <QDateTime>
+#include <QDropEvent>
+#include <QDragEnterEvent>
+#include <QMimeData>
+#include <QMessageBox>
+#include <QHeaderView>
+
 #include <QDebug>
 
 #include "preview_text.h"
@@ -12,6 +18,9 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    setAcceptDrops(true);
+
+
     initActions();
     initLayout();
     initPreviewers();
@@ -21,7 +30,6 @@ MainWindow::~MainWindow()
 {
     if (m_currentPreview)
         dettachPreview();
-    qDeleteAll(m_previews);
     delete m_defaultPreview;
 }
 
@@ -31,6 +39,7 @@ void MainWindow::initLayout()
     setCentralWidget(cw);
 
     QHBoxLayout *bl = new QHBoxLayout;
+
     cw->setLayout(bl);
     QVBoxLayout *fvl = new QVBoxLayout;
     bl->addLayout(fvl);
@@ -38,6 +47,9 @@ void MainWindow::initLayout()
     sortFilesToolBar->addActions({m_sortFilesNameAction, m_sortFilesDateAction});
     fvl->addWidget(sortFilesToolBar);
     fvl->addWidget(m_filesList = new QListWidget, 1);
+    m_filesList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_filesList->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    m_filesList->setFocusPolicy(Qt::NoFocus);
 
     QFrame *previewFrame = new QFrame;
     previewFrame->setContentsMargins(0, 0, 0, 0);
@@ -45,7 +57,17 @@ void MainWindow::initLayout()
     previewFrame->setLayout(m_previewLayout);
     bl->addWidget(previewFrame, 1);
 
-    bl->addWidget(m_foldersList = new QListWidget);
+    bl->addWidget(m_foldersList = new QTableWidget);
+    m_foldersList->setFocusPolicy(Qt::NoFocus);
+    m_foldersList->setSelectionMode(QAbstractItemView::NoSelection);
+    m_foldersList->setColumnCount(3);
+    m_foldersList->verticalHeader()->hide();
+    m_foldersList->setHorizontalHeaderLabels({"Shortcut", "Folder", "Moved"});
+    m_foldersList->setColumnWidth(0, 100);
+    m_foldersList->setColumnWidth(1, 200);
+    m_foldersList->setColumnWidth(2, 50);
+    m_foldersList->setFixedWidth(355);
+    m_foldersList->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
 
     connect(m_filesList, &QListWidget::currentRowChanged, this, &MainWindow::fileSelected);
 }
@@ -60,7 +82,7 @@ void MainWindow::initActions()
     m_newFiles = files->addAction("Add Files", this, static_cast<void(MainWindow::*)(void)>(&MainWindow::addFiles), QKeySequence(Qt::CTRL + Qt::Key_O));
     files->addAction("Clear Files", this, &MainWindow::clearFiles, QKeySequence(Qt::CTRL + Qt::Key_N));
     files->addSeparator();
-    m_newFolders = files->addAction("Add Folders", this, &MainWindow::addFolders, QKeySequence(Qt::SHIFT + Qt::CTRL + Qt::Key_O));
+    m_newFolders = files->addAction("Add Folders", this, static_cast<void(MainWindow::*)(void)>(&MainWindow::addFolders), QKeySequence(Qt::SHIFT + Qt::CTRL + Qt::Key_O));
     files->addAction("Clear Folders", this, &MainWindow::clearFolders, QKeySequence(Qt::SHIFT + Qt::CTRL + Qt::Key_N));
 
 
@@ -87,10 +109,21 @@ void MainWindow::updateFilesList()
         m_filesList->addItem(f.fileName());
 }
 
+void MainWindow::updateFoldersList()
+{
+    int row = 0;
+    m_foldersList->setRowCount(m_folders.length());
+
+    for (const QFileInfo &f : m_folders){
+        m_foldersList->setItem(row, 1, new QTableWidgetItem(f.fileName()));
+        ++row;
+    }
+}
+
 void MainWindow::sortFilesByName()
 {
     const auto sortByName = [](const QFileInfo &a, const QFileInfo &b){
-        return a.fileName() > b.fileName();
+        return a.fileName() < b.fileName();
     };
     std::sort(m_files.begin(), m_files.end(), sortByName);
     updateFilesList();
@@ -124,6 +157,57 @@ void MainWindow::attachPreview(PreviewFrame *p)
     m_currentPreview->show();
 }
 
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (event->mimeData()->hasUrls())
+        event->acceptProposedAction();
+}
+
+void MainWindow::dropEvent(QDropEvent *event)
+{
+    const QMimeData* mimeData = event->mimeData();
+    if (not mimeData->hasUrls())
+        return;
+    QList<QUrl> urlList = mimeData->urls();
+    QStringList files;
+    QStringList folders;
+    QStringList ignored;
+
+    for (const QUrl &url : urlList){
+        const QString path = url.toLocalFile();
+        QFileInfo info(path);
+        if (info.isFile())
+            files << path;
+        else if (info.isDir())
+            folders << path;
+        else
+            ignored << path;
+    }
+    if (not files.isEmpty())
+        addFiles(files);
+    if (not folders.isEmpty())
+        addFolders(folders);
+
+    if (not ignored.isEmpty()){
+        QMessageBox msg(this);
+        msg.setWindowTitle("Warning");
+        const int count = ignored.length();
+        const QString text = count > 1 ?
+                    QString("%1 urls are unresolved!").arg(count)
+                  : QString("'%1' url is unresolved!").arg(ignored.first());
+        QString details =
+                QString("They can't be threaten as files neither as diectories.");
+        if (count > 1)
+            for (const QString &p : ignored)
+                details += QString("\n'%1'").arg(p);
+        msg.setText(text);
+        msg.setDetailedText(details);
+        msg.setStandardButtons(QMessageBox::Ok);
+        msg.setIcon(QMessageBox::Warning);
+        const int res = msg.exec();
+    }
+}
+
 void MainWindow::addFiles()
 {
     const QStringList newFilePathes = QFileDialog::getOpenFileNames(this, "Add Files", m_lastDialogDir);
@@ -140,6 +224,16 @@ void MainWindow::addFiles(const QStringList &filePathes)
             m_files << info;
     }
     updateFilesList();
+}
+
+void MainWindow::addFolders(const QStringList &filePathes)
+{
+    for (const auto &path : filePathes){
+        QFileInfo info(path);
+        if (not m_folders.contains(info))
+            m_folders << info;
+    }
+    updateFoldersList();
 }
 
 void MainWindow::addFolders()

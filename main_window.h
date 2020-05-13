@@ -6,6 +6,7 @@
 
 #include <QBoxLayout>
 #include <QListWidget>
+#include <QTableWidget>
 #include <QFileInfo>
 
 #include "preview_frame.h"
@@ -24,7 +25,7 @@ private:
 
 protected:
     QVector<QFileInfo> m_files;
-    QStringList m_folderPathes;
+    QVector<QFileInfo> m_folders;
     QList<QKeySequence> m_folderShortcuts;
     QList<QAction*> m_separateActions;
 
@@ -39,21 +40,25 @@ protected:
     QAction *m_sortFilesDateAction;
 
     QListWidget *m_filesList;
-    QListWidget *m_foldersList;
+    QTableWidget *m_foldersList;
     QVBoxLayout *m_previewLayout;
 
     QString m_lastDialogDir;
 
     void addFiles(const QStringList &filePathes);
+    void addFolders(const QStringList &filePathes);
 
-    void updateFoldersList();
     void updateFilesList();
+    void updateFoldersList();
 
     void sortFilesByName();
     void sortFilesByDate();
 
     void dettachPreview();
     void attachPreview(PreviewFrame *p);
+
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dropEvent(QDropEvent* event) override;
 
 protected slots:
     void addFiles();
