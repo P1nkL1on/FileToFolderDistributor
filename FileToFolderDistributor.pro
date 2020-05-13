@@ -9,9 +9,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        mainwindow.cpp \
-    distributor.cpp
+        main_window.cpp \
+        preview_frame.cpp \
+        preview_text.cpp \
+        preview_utils.cpp
 
 HEADERS += \
-        mainwindow.h \
-    distributor.h
+        main_window.h \
+        preview_frame.h \
+        preview_text.h \
+        preview_utils.h
