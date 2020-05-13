@@ -7,6 +7,7 @@
 #include <QDebug>
 
 #include "preview_text.h"
+#include "preview_image.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -56,7 +57,7 @@ void MainWindow::initActions()
 
     QMenu *files = menuBar->addMenu("Files");
 
-    m_newFiles = files->addAction("Add Files", this, &MainWindow::addFiles, QKeySequence(Qt::CTRL + Qt::Key_O));
+    m_newFiles = files->addAction("Add Files", this, static_cast<void(MainWindow::*)(void)>(&MainWindow::addFiles), QKeySequence(Qt::CTRL + Qt::Key_O));
     files->addAction("Clear Files", this, &MainWindow::clearFiles, QKeySequence(Qt::CTRL + Qt::Key_N));
     files->addSeparator();
     m_newFolders = files->addAction("Add Folders", this, &MainWindow::addFolders, QKeySequence(Qt::SHIFT + Qt::CTRL + Qt::Key_O));
@@ -73,8 +74,11 @@ void MainWindow::initPreviewers()
 {
     m_defaultPreview = new PreviewText;
 
-
+    auto image = new PreviewImage;
+    for (const QString &ext : {"png", "bmp", "jpg", "jpeg", "svg"})
+        m_previews.insert(ext, image);
 }
+
 
 void MainWindow::updateFilesList()
 {
@@ -108,6 +112,7 @@ void MainWindow::dettachPreview()
 {
     Q_ASSERT(m_currentPreview);
     m_previewLayout->removeWidget(m_currentPreview);
+    m_currentPreview->hide();
     m_currentPreview = nullptr;
 }
 
@@ -116,6 +121,7 @@ void MainWindow::attachPreview(PreviewFrame *p)
     Q_ASSERT(not m_currentPreview);
     Q_ASSERT(p);
     m_previewLayout->addWidget(m_currentPreview = p, 1);
+    m_currentPreview->show();
 }
 
 void MainWindow::addFiles()
@@ -123,7 +129,12 @@ void MainWindow::addFiles()
     const QStringList newFilePathes = QFileDialog::getOpenFileNames(this, "Add Files", m_lastDialogDir);
     if (newFilePathes.isEmpty())
         return;
-    for (const auto &path : newFilePathes){
+    addFiles(newFilePathes);
+}
+
+void MainWindow::addFiles(const QStringList &filePathes)
+{
+    for (const auto &path : filePathes){
         QFileInfo info(path);
         if (not m_files.contains(info))
             m_files << info;
@@ -157,7 +168,6 @@ void MainWindow::fileSelected(int ind)
     Q_ASSERT(ind < m_files.length());
     const QFileInfo fileInfo = m_files[ind];
     const QString ext = fileInfo.completeSuffix().toLower();
-
 
     // preview
     // find exact previewer

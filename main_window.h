@@ -29,8 +29,8 @@ protected:
     QList<QAction*> m_separateActions;
 
     QHash<QString, PreviewFrame *> m_previews;
-    PreviewFrame *m_defaultPreview;
-    PreviewFrame *m_currentPreview;
+    PreviewFrame *m_defaultPreview = nullptr;
+    PreviewFrame *m_currentPreview = nullptr;
 
     QAction *m_newFiles;
     QAction *m_addFiles;
@@ -43,6 +43,8 @@ protected:
     QVBoxLayout *m_previewLayout;
 
     QString m_lastDialogDir;
+
+    void addFiles(const QStringList &filePathes);
 
     void updateFoldersList();
     void updateFilesList();

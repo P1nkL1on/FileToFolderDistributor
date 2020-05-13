@@ -11,11 +11,13 @@ SOURCES += \
         main.cpp \
         main_window.cpp \
         preview_frame.cpp \
+        preview_image.cpp \
         preview_text.cpp \
         preview_utils.cpp
 
 HEADERS += \
         main_window.h \
         preview_frame.h \
+        preview_image.h \
         preview_text.h \
         preview_utils.h
