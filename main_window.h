@@ -8,6 +8,7 @@
 #include <QListWidget>
 #include <QTableWidget>
 #include <QFileInfo>
+#include <QToolBar>
 
 #include "preview_frame.h"
 
@@ -28,6 +29,10 @@ protected:
     QVector<QFileInfo> m_folders;
     QList<QKeySequence> m_folderShortcuts;
     QList<QAction*> m_separateActions;
+    QHash<QString, QVector<QFileInfo>> m_distrubution;
+    QMenu *m_distribMenu;
+    QToolBar *m_distribToolBar;
+    int m_fileSelectedInd = -1;
 
     QHash<QString, PreviewFrame *> m_previews;
     PreviewFrame *m_defaultPreview = nullptr;
@@ -38,6 +43,8 @@ protected:
     QAction *m_newFolders;
     QAction *m_sortFilesNameAction;
     QAction *m_sortFilesDateAction;
+    QAction *m_apply;
+    QAction *m_revert;
 
     QListWidget *m_filesList;
     QTableWidget *m_foldersList;
@@ -50,6 +57,7 @@ protected:
 
     void updateFilesList();
     void updateFoldersList();
+    void updateFoldersCount();
 
     void sortFilesByName();
     void sortFilesByDate();
@@ -60,12 +68,19 @@ protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dropEvent(QDropEvent* event) override;
 
+    void previewFile(QFileInfo fileInfo);
+
 protected slots:
     void addFiles();
     void addFolders();
     void clearFiles();
     void clearFolders();
     void fileSelected(int ind);
+    void cellDoubleClicked(int row, int col);
+    void skipFile();
+    void planDistribFile(int fileInd, int dirInd);
+    void applyDistribPlan();
+    void revertDistribPlan();
 };
 
 #endif // MAINWINDOW_H
