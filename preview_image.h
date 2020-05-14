@@ -3,6 +3,7 @@
 
 #include <QLabel>
 #include <QPixmap>
+#include <QMovie>
 
 #include "preview_frame.h"
 
@@ -11,9 +12,10 @@ class PreviewImage : public PreviewFrame
     Q_OBJECT
 public:
     PreviewImage(QWidget *parent = nullptr);
-    void previewFile(const QString &filePath) override;
 protected:
+    void previewFile(const QString &filePath) override;
     QLabel *m_label;
+    QMovie *m_movie = nullptr;
 };
 
 

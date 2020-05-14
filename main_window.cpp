@@ -10,6 +10,8 @@
 #include <QMessageBox>
 #include <QHeaderView>
 #include <QDesktopServices>
+#include <QAbstractButton>
+#include <QDirIterator>
 
 #include <QDebug>
 
@@ -123,7 +125,7 @@ void MainWindow::initPreviewers()
     m_defaultPreview = new PreviewText;
 
     auto image = new PreviewImage;
-    for (const QString &ext : {"png", "bmp", "jpg", "jpeg", "svg"})
+    for (const QString &ext : {"png", "bmp", "jpg", "jpeg", "svg", "gif"})
         m_previews.insert(ext, image);
 }
 
@@ -239,10 +241,34 @@ void MainWindow::dropEvent(QDropEvent *event)
         else
             ignored << path;
     }
+    if (not folders.isEmpty()){
+        QMessageBox msg(this);
+        msg.setWindowTitle("Folder Identification");
+        msg.setText("Do you want to add folder(s) as a destination or\n"
+                    "do you want to add file from inside them?");
+        QString foldersList;
+        for (const QString &f : folders)
+            foldersList += QString("%1\n").arg(f);
+        msg.setDetailedText(foldersList);
+        msg.setIcon(QMessageBox::Question);
+        msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        msg.button(QMessageBox::Yes)->setText("Add destination");
+        msg.button(QMessageBox::No)->setText("Add files from inside");
+        const int res = msg.exec();
+        if (res == QMessageBox::Yes){
+            addFolders(folders);
+        } else if (res == QMessageBox::No) {
+            for (const QString &f : folders){
+                QDirIterator it(f, {}, QDir::Files, QDirIterator::Subdirectories);
+                while (it.hasNext())
+                    files << it.next();
+            }
+        } else {
+            QMessageBox::information(this, "Folder Identification", "No folders was added.");
+        }
+    }
     if (not files.isEmpty())
         addFiles(files);
-    if (not folders.isEmpty())
-        addFolders(folders);
 
     if (not ignored.isEmpty()){
         QMessageBox msg(this);
@@ -357,7 +383,7 @@ void MainWindow::previewFile(QFileInfo fileInfo)
         attachPreview(preview);
     }
 
-    m_currentPreview->previewFile(fileInfo.filePath());
+    m_currentPreview->setFile(fileInfo.filePath());
     m_distribMenu->setEnabled(not m_folders.isEmpty());
 }
 
@@ -415,11 +441,44 @@ void MainWindow::applyDistribPlan()
     msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
     if (msg.exec() != QMessageBox::Yes)
         return;
+
+    if (QMessageBox::warning(this, "Confirmation",
+                             "Are you sure? File(s) will be moved.\n"
+                             "This action is undoable.",
+                             QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) != QMessageBox::Yes)
+        return;
+
+    for (const QFileInfo &d : m_folders){
+        const QString dirName = d.fileName();
+        const QVector<QFileInfo> &infos = m_distrubution[dirName];
+        for (const QFileInfo &f : infos){
+            const QString newPath = QString("%1/%2")
+                    .arg(d.filePath()).arg(f.fileName());
+            QDir(f.filePath()).rename(f.filePath(), newPath);
+        }
+    }
+
     m_distrubution.clear();
     updateFoldersCount();
 }
 
 void MainWindow::revertDistribPlan()
 {
+    QStringList distributedFiles;
+    for (const QString &d : m_distrubution.keys())
+        for (const QFileInfo &i : m_distrubution[d])
+            distributedFiles << i.filePath();
+    if (distributedFiles.isEmpty())
+        return;
 
+    if (QMessageBox::warning(this, "Confirmation",
+                             "Are you sure? File(s) will be added back\n"
+                             "and all destribution plan will be erased.\n"
+                             "This action is undoable.",
+                             QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+        return;
+
+    addFiles(distributedFiles);
+    m_distrubution.clear();
+    updateFoldersCount();
 }

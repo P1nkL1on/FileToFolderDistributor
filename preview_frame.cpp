@@ -2,7 +2,16 @@
 
 PreviewFrame::PreviewFrame(QWidget *parent) : QWidget(parent)
 {
-    setLayout(m_layout = new QVBoxLayout);
+    QVBoxLayout *l = new QVBoxLayout;
+    setLayout(l);
+    l->addLayout(m_layout = new QVBoxLayout, 1);
+    l->addWidget(m_titleLabel = new QLabel());
+}
+
+void PreviewFrame::setFile(const QString &filePath)
+{
+    m_titleLabel->setText(filePath);
+    previewFile(filePath);
 }
 
 void PreviewFrame::previewFile(const QString &filePath)

@@ -10,8 +10,8 @@ class PreviewText : public PreviewFrame
     Q_OBJECT
 public:
     PreviewText(QWidget *parent = nullptr);
-    void previewFile(const QString &filePath) override;
 protected:
+    void previewFile(const QString &filePath) override;
     QTextEdit *m_textEdit;
 };
 
