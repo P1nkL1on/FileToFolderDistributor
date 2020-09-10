@@ -47,7 +47,7 @@ void MainWindow::initLayout()
     QVBoxLayout *fvl = new QVBoxLayout;
     bl->addLayout(fvl);
     QToolBar *sortFilesToolBar = new QToolBar;
-    sortFilesToolBar->addActions({m_sortFilesNameAction, m_sortFilesDateAction});
+    sortFilesToolBar->addActions({m_sortFilesNameAction, m_sortFilesDateAction, m_selectRandomAction});
     fvl->addWidget(sortFilesToolBar);
     fvl->addWidget(m_filesList = new QListWidget, 1);
     m_filesList->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -82,6 +82,7 @@ void MainWindow::initLayout()
     m_foldersList->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     connect(m_filesList, &QListWidget::currentRowChanged, this, &MainWindow::fileSelected);
+    connect(m_filesList, &QListWidget::doubleClicked, this, &MainWindow::openFile);
     connect(m_foldersList, &QTableWidget::cellDoubleClicked, this, &MainWindow::cellDoubleClicked);
 }
 
@@ -109,6 +110,7 @@ void MainWindow::initActions()
 
     m_sortFilesNameAction = sort->addAction("Sort Files by Name", this, &MainWindow::sortFilesByName);
     m_sortFilesDateAction = sort->addAction("Sort Files by Date", this, &MainWindow::sortFilesByDate);
+    m_selectRandomAction = sort->addAction("Select Random File", this, &MainWindow::selectRandomFile, QKeySequence(Qt::CTRL + Qt::Key_R));
 
     m_distribMenu = menuBar->addMenu("Move to");
     m_distribMenu->setEnabled(false);
@@ -118,6 +120,7 @@ void MainWindow::initActions()
     QMenu *distrib = menuBar->addMenu("Distribution");
     m_apply = distrib->addAction("Apply", this, &MainWindow::applyDistribPlan, QKeySequence(Qt::CTRL + Qt::Key_Enter));
     m_revert = distrib->addAction("Revert", this, &MainWindow::revertDistribPlan, QKeySequence(Qt::CTRL + Qt::Key_Z));
+
 }
 
 void MainWindow::initPreviewers()
@@ -481,4 +484,19 @@ void MainWindow::revertDistribPlan()
     addFiles(distributedFiles);
     m_distrubution.clear();
     updateFoldersCount();
+}
+
+void MainWindow::selectRandomFile()
+{
+    const int count = m_filesList->count();
+    if (not count)
+        return;
+    m_filesList->setCurrentRow(rand() % count);
+}
+
+void MainWindow::openFile(const QModelIndex &modelIndex)
+{
+    const int ind = modelIndex.row();
+    const QString file = m_files[ind].absoluteFilePath();
+    QDesktopServices::openUrl(QUrl("file:///" + file));
 }

@@ -43,6 +43,7 @@ protected:
     QAction *m_newFolders;
     QAction *m_sortFilesNameAction;
     QAction *m_sortFilesDateAction;
+    QAction *m_selectRandomAction;
     QAction *m_apply;
     QAction *m_revert;
 
@@ -81,6 +82,8 @@ protected slots:
     void planDistribFile(int fileInd, int dirInd);
     void applyDistribPlan();
     void revertDistribPlan();
+    void selectRandomFile();
+    void openFile(const QModelIndex &modelIndex);
 };
 
 #endif // MAINWINDOW_H
